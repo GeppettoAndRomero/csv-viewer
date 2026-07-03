@@ -236,3 +236,112 @@
   justify-content: flex-end;
   margin-top: var(--space-4);
 }
+
+/* ========================================
+   Fullscreen viewer (画面いっぱい)
+   When a file is loaded the table takes over the whole viewport so wide
+   tables are readable. Escape (or the ✕ button) closes it and clears the file.
+   ======================================== */
+
+.csv-viewer-fs {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  overflow: hidden;
+  background-color: var(--color-bg);
+  animation: csvFsIn var(--dur-mid) var(--ease);
+}
+
+.csv-viewer-fs:focus {
+  outline: none;
+}
+
+@keyframes csvFsIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .csv-viewer-fs {
+    animation: none;
+  }
+}
+
+.csv-viewer-fs__inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: var(--space-4);
+  gap: var(--space-3);
+}
+
+.csv-viewer-fs .csv-toolbar {
+  margin-bottom: 0;
+}
+
+.csv-viewer-fs__right {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+
+/* The table fills all height left over by the toolbar and actions. Its own
+   fixed height is replaced by flex growth; min-height:0 lets it shrink so the
+   inner scrollbar (not the page) handles overflow. */
+.csv-viewer-fs .csv-table-scroll {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+
+.csv-viewer-fs .csv-actions {
+  margin-top: 0;
+}
+
+.csv-fs-close {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.csv-fs-close:hover {
+  border-color: var(--color-danger);
+  background-color: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface));
+}
+
+.csv-fs-close:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.csv-fs-close__kbd {
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background-color: var(--color-bg);
+  color: var(--color-subtle);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: var(--fs-1);
+  line-height: 1;
+}
+
+.csv-fs-close__x {
+  font-size: var(--fs-4);
+  line-height: 1;
+}

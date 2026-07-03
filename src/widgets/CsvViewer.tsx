@@ -72,11 +72,24 @@ export function CsvViewer({ locale = 'en' }: CsvViewerProps) {
 
   // Virtualization state.
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(420);
 
   const finish = useCallback(() => {
     window.dispatchEvent(new CustomEvent('filesProcessed'));
+  }, []);
+
+  // Close the fullscreen table and return to the empty (no-file) state.
+  const reset = useCallback(() => {
+    bytesRef.current = null;
+    nameRef.current = '';
+    setReady(null);
+    setErrorCode(null);
+    setErrorName('');
+    setScrollTop(0);
+    const input = document.getElementById('csv-file-input') as HTMLInputElement | null;
+    if (input) input.value = '';
   }, []);
 
   // Decode + parse already-read bytes with the given choices, then set state.
@@ -212,6 +225,26 @@ export function CsvViewer({ locale = 'en' }: CsvViewerProps) {
     return () => ro.disconnect();
   }, [ready !== null]);
 
+  // While the fullscreen table is open: Escape closes it and clears the file,
+  // background scroll is locked, and focus moves into the dialog.
+  useEffect(() => {
+    if (!ready) return;
+    overlayRef.current?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        reset();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [ready, reset]);
+
   const onPick = (e: Event) => {
     const input = e.currentTarget as HTMLInputElement;
     const files = Array.from(input.files ?? []);
@@ -308,7 +341,15 @@ export function CsvViewer({ locale = 'en' }: CsvViewerProps) {
       )}
 
       {ready && (
-        <AppCard className="mt-6">
+        <div
+          class="csv-viewer-fs"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t.tableLabel}
+          ref={overlayRef}
+          tabIndex={-1}
+        >
+          <div class="csv-viewer-fs__inner">
           <div class="csv-toolbar">
             <div class="csv-meta">
               <span class="csv-meta__file" title={ready.fileName} data-testid="file-name">
@@ -328,6 +369,7 @@ export function CsvViewer({ locale = 'en' }: CsvViewerProps) {
               </span>
             </div>
 
+            <div class="csv-viewer-fs__right">
             <div class="csv-controls">
               <div class="csv-control">
                 <label class="csv-control__label" for="csv-encoding">
@@ -385,6 +427,21 @@ export function CsvViewer({ locale = 'en' }: CsvViewerProps) {
                 />
                 <span>{t.headerToggle}</span>
               </label>
+            </div>
+
+              <button
+                type="button"
+                class="csv-fs-close"
+                onClick={reset}
+                aria-label={t.close}
+                title={t.close}
+                data-testid="close-viewer"
+              >
+                <kbd class="csv-fs-close__kbd">ESC</kbd>
+                <span class="csv-fs-close__x" aria-hidden="true">
+                  ×
+                </span>
+              </button>
             </div>
           </div>
 
@@ -447,7 +504,8 @@ export function CsvViewer({ locale = 'en' }: CsvViewerProps) {
               {t.loadAnother}
             </AppButton>
           </div>
-        </AppCard>
+          </div>
+        </div>
       )}
     </div>
   );

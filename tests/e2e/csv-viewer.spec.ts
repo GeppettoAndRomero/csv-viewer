@@ -60,6 +60,36 @@ test.describe('CSV viewer', () => {
     await expect(page.getByTestId('col-count')).toHaveText('4');
   });
 
+  test('opens the table in a fullscreen dialog and Escape closes it and clears the file', async ({
+    page,
+  }) => {
+    await page.goto('/csv-viewer/');
+    await waitReady(page);
+    await openSampleCsv(page);
+
+    // The loaded table lives in a fullscreen dialog covering the viewport.
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    const box = await dialog.boundingBox();
+    const viewport = page.viewportSize()!;
+    expect(box!.width).toBeCloseTo(viewport.width, 0);
+    expect(box!.height).toBeCloseTo(viewport.height, 0);
+
+    // Escape closes the dialog and returns to the empty (no-file) state.
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('csv-table')).toHaveCount(0);
+    await expect(page.getByTestId('file-name')).toHaveCount(0);
+  });
+
+  test('the close button clears the loaded file', async ({ page }) => {
+    await page.goto('/csv-viewer/');
+    await waitReady(page);
+    await openSampleCsv(page);
+
+    await page.getByTestId('close-viewer').click();
+    await expect(page.getByTestId('csv-table')).toHaveCount(0);
+  });
+
   test('shows a localized error for an unsupported file type', async ({ page }) => {
     await page.goto('/csv-viewer/');
     await waitReady(page);
