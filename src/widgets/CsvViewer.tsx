@@ -14,6 +14,7 @@
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { AppCard } from './AppCard';
 import { AppButton } from './AppButton';
+import { FullscreenShell } from './FullscreenShell';
 import { ui } from '@/i18n/ui';
 import { validateFile } from '@/utils/fileValidation';
 import {
@@ -72,7 +73,6 @@ export function CsvViewer({ locale = 'en' }: CsvViewerProps) {
 
   // Virtualization state.
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const overlayRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(420);
 
@@ -225,26 +225,6 @@ export function CsvViewer({ locale = 'en' }: CsvViewerProps) {
     return () => ro.disconnect();
   }, [ready !== null]);
 
-  // While the fullscreen table is open: Escape closes it and clears the file,
-  // background scroll is locked, and focus moves into the dialog.
-  useEffect(() => {
-    if (!ready) return;
-    overlayRef.current?.focus();
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        reset();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [ready, reset]);
-
   const onPick = (e: Event) => {
     const input = e.currentTarget as HTMLInputElement;
     const files = Array.from(input.files ?? []);
@@ -341,15 +321,13 @@ export function CsvViewer({ locale = 'en' }: CsvViewerProps) {
       )}
 
       {ready && (
-        <div
-          class="csv-viewer-fs"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t.tableLabel}
-          ref={overlayRef}
-          tabIndex={-1}
+        <FullscreenShell
+          open={!!ready}
+          onRequestClose={reset}
+          label={t.tableLabel}
+          closeLabel={t.close}
+          closeTestId="close-viewer"
         >
-          <div class="csv-viewer-fs__inner">
           <div class="csv-toolbar">
             <div class="csv-meta">
               <span class="csv-meta__file" title={ready.fileName} data-testid="file-name">
@@ -369,79 +347,65 @@ export function CsvViewer({ locale = 'en' }: CsvViewerProps) {
               </span>
             </div>
 
-            <div class="csv-viewer-fs__right">
-            <div class="csv-controls">
-              <div class="csv-control">
-                <label class="csv-control__label" for="csv-encoding">
-                  {t.encodingLabel}
+            <div class="csv-toolbar__right">
+              <div class="csv-controls">
+                <div class="csv-control">
+                  <label class="csv-control__label" for="csv-encoding">
+                    {t.encodingLabel}
+                  </label>
+                  <select
+                    id="csv-encoding"
+                    class="app-field__select"
+                    value={settings.encoding}
+                    onChange={(e) =>
+                      setSettings((s) => ({
+                        ...s,
+                        encoding: (e.currentTarget as HTMLSelectElement).value as EncodingChoice,
+                      }))
+                    }
+                  >
+                    <option value="auto">{t.optAuto}</option>
+                    <option value="utf-8">{t.encUtf8}</option>
+                    <option value="shift-jis">{t.encShiftJis}</option>
+                  </select>
+                </div>
+
+                <div class="csv-control">
+                  <label class="csv-control__label" for="csv-delimiter">
+                    {t.delimiterLabel}
+                  </label>
+                  <select
+                    id="csv-delimiter"
+                    class="app-field__select"
+                    value={settings.delimiter}
+                    onChange={(e) =>
+                      setSettings((s) => ({
+                        ...s,
+                        delimiter: (e.currentTarget as HTMLSelectElement).value as DelimiterChoice,
+                      }))
+                    }
+                  >
+                    <option value="auto">{t.optAuto}</option>
+                    <option value=",">{t.delimComma}</option>
+                    <option value={'\t'}>{t.delimTab}</option>
+                    <option value=";">{t.delimSemicolon}</option>
+                  </select>
+                </div>
+
+                <label class="csv-control__checkbox">
+                  <input
+                    type="checkbox"
+                    checked={settings.hasHeader}
+                    onChange={(e) =>
+                      setSettings((s) => ({
+                        ...s,
+                        hasHeader: (e.currentTarget as HTMLInputElement).checked,
+                      }))
+                    }
+                  />
+                  <span>{t.headerToggle}</span>
                 </label>
-                <select
-                  id="csv-encoding"
-                  class="app-field__select"
-                  value={settings.encoding}
-                  onChange={(e) =>
-                    setSettings((s) => ({
-                      ...s,
-                      encoding: (e.currentTarget as HTMLSelectElement).value as EncodingChoice,
-                    }))
-                  }
-                >
-                  <option value="auto">{t.optAuto}</option>
-                  <option value="utf-8">{t.encUtf8}</option>
-                  <option value="shift-jis">{t.encShiftJis}</option>
-                </select>
               </div>
-
-              <div class="csv-control">
-                <label class="csv-control__label" for="csv-delimiter">
-                  {t.delimiterLabel}
-                </label>
-                <select
-                  id="csv-delimiter"
-                  class="app-field__select"
-                  value={settings.delimiter}
-                  onChange={(e) =>
-                    setSettings((s) => ({
-                      ...s,
-                      delimiter: (e.currentTarget as HTMLSelectElement).value as DelimiterChoice,
-                    }))
-                  }
-                >
-                  <option value="auto">{t.optAuto}</option>
-                  <option value=",">{t.delimComma}</option>
-                  <option value={'\t'}>{t.delimTab}</option>
-                  <option value=";">{t.delimSemicolon}</option>
-                </select>
-              </div>
-
-              <label class="csv-control__checkbox">
-                <input
-                  type="checkbox"
-                  checked={settings.hasHeader}
-                  onChange={(e) =>
-                    setSettings((s) => ({
-                      ...s,
-                      hasHeader: (e.currentTarget as HTMLInputElement).checked,
-                    }))
-                  }
-                />
-                <span>{t.headerToggle}</span>
-              </label>
-            </div>
-
-              <button
-                type="button"
-                class="csv-fs-close"
-                onClick={reset}
-                aria-label={t.close}
-                title={t.close}
-                data-testid="close-viewer"
-              >
-                <kbd class="csv-fs-close__kbd">ESC</kbd>
-                <span class="csv-fs-close__x" aria-hidden="true">
-                  ×
-                </span>
-              </button>
             </div>
           </div>
 
@@ -504,8 +468,7 @@ export function CsvViewer({ locale = 'en' }: CsvViewerProps) {
               {t.loadAnother}
             </AppButton>
           </div>
-          </div>
-        </div>
+        </FullscreenShell>
       )}
     </div>
   );
